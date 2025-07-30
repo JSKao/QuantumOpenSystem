@@ -5,3 +5,4 @@ sympy
 tqdm
 pytest
 nbval
+pytest-cov
