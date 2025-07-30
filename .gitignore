@@ -7,3 +7,5 @@ __pycache__/
 .vscode/
 # OS files
 .DS_Store
+venv/
+.env
