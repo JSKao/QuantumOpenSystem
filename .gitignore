@@ -1,0 +1,9 @@
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+# Python cache
+__pycache__/
+*.pyc
+# VSCode settings
+.vscode/
+# OS files
+.DS_Store
