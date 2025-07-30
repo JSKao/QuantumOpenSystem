@@ -1,3 +1,5 @@
+![CI](https://github.com/JSKao/QuantumOpenSystem/actions/workflows/pytest.yml/badge.svg)
+![Coverage](https://codecov.io/gh/JSKao/QuantumOpenSystem/branch/main/graph/badge.svg)
 # QuantumOpenSystem
 
 A modular Python project for simulating open quantum systems using the Lindblad master equation and Quantum Jump Monte Carlo (QJMC) method.  
