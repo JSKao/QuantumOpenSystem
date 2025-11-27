@@ -248,3 +248,69 @@ def exact_twoAtomSystem(omega, gamma, init_state, time_values, QuantumSystem):
 
 
     return ne_exact, ne_infty_values
+
+def run_qjmc_generic(quantum_system, init_state, t_list, e_ops=[]):
+    """
+    A generic QJMC solver for arbitrary quantum systems.
+    
+    Args:
+        quantum_system: An instance of QuantumSystem class.
+        init_state: Initial state vector (numpy array).
+        t_list: List of time points to record.
+        e_ops: List of operators to calculate expectation values for.
+    
+    Returns:
+        result: A dictionary containing 'times', 'states', and 'expect'.
+    """
+    dt = t_list[1] - t_list[0] # Assume uniform spacing for simplicity
+    
+    # Pre-calculate operators from system
+    L = quantum_system.L
+    U_eff = quantum_system.U_eff
+    gamma = quantum_system.gamma
+    
+    # Setup results container
+    # expect[i][t] is the expectation value of e_ops[i] at time t
+    expect_results = [[] for _ in e_ops]
+    trajectory_states = []
+    
+    current_state = init_state.copy()
+    
+    # Simple single trajectory loop (for demonstration/fitting average)
+    # Note: For rigorous QJMC, this should be averaged over N_traj.
+    # Here we implement a single trajectory function that can be looped externally.
+    
+    for t in t_list:
+        # 1. Record data
+        trajectory_states.append(current_state.copy())
+        for i, op in enumerate(e_ops):
+            # <psi|O|psi>
+            val = np.vdot(current_state, op @ current_state).real
+            expect_results[i].append(val)
+            
+        # 2. Evolve
+        # (Using the same logic as your existing code)
+        current_state_1 = U_eff @ current_state
+        dp = jump_probability(current_state_1, L, dt)
+        r = np.random.rand()
+        
+        if r < dp:
+            # Jump occurred
+            current_state = np.sqrt(gamma) * (L @ current_state)
+            # Normalize
+            norm = np.linalg.norm(current_state)
+            if norm > 0:
+                current_state = current_state / norm
+        else:
+            # No jump, just effective evolution
+            current_state = current_state_1
+            # Normalize (important for MCWF)
+            norm = np.linalg.norm(current_state)
+            if norm > 0:
+                current_state = current_state / norm
+                
+    return {
+        "times": t_list,
+        "states": trajectory_states,
+        "expect": expect_results
+    }
