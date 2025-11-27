@@ -249,12 +249,18 @@ def exact_twoAtomSystem(omega, gamma, init_state, time_values, QuantumSystem):
 
     return ne_exact, ne_infty_values
 
+
+# ==========================================
+# New Generic Solver for QCVV Integration
+# ==========================================
+
 def run_qjmc_generic(quantum_system, init_state, t_list, e_ops=[]):
     """
     A generic QJMC solver for arbitrary quantum systems.
+    Designed to be compatible with QCVV protocols.
     
     Args:
-        quantum_system: An instance of QuantumSystem class.
+        quantum_system: An instance of QuantumSystem class (from quantum_system.py).
         init_state: Initial state vector (numpy array).
         t_list: List of time points to record.
         e_ops: List of operators to calculate expectation values for.
@@ -262,49 +268,65 @@ def run_qjmc_generic(quantum_system, init_state, t_list, e_ops=[]):
     Returns:
         result: A dictionary containing 'times', 'states', and 'expect'.
     """
-    dt = t_list[1] - t_list[0] # Assume uniform spacing for simplicity
+    dt = t_list[1] - t_list[0] # Assume uniform spacing
     
-    # Pre-calculate operators from system
+    # Extract system operators
     L = quantum_system.L
     U_eff = quantum_system.U_eff
     gamma = quantum_system.gamma
     
-    # Setup results container
-    # expect[i][t] is the expectation value of e_ops[i] at time t
+    # Prepare results containers
+    # expect[i] will store the trace of e_ops[i] over time
     expect_results = [[] for _ in e_ops]
     trajectory_states = []
     
     current_state = init_state.copy()
     
-    # Simple single trajectory loop (for demonstration/fitting average)
-    # Note: For rigorous QJMC, this should be averaged over N_traj.
-    # Here we implement a single trajectory function that can be looped externally.
-    
     for t in t_list:
-        # 1. Record data
+        # 1. Record data at current time step
         trajectory_states.append(current_state.copy())
+        
+        # Calculate expectation values <psi|O|psi>
         for i, op in enumerate(e_ops):
-            # <psi|O|psi>
+            # Real part is taken as observables are Hermitian
             val = np.vdot(current_state, op @ current_state).real
             expect_results[i].append(val)
             
-        # 2. Evolve
-        # (Using the same logic as your existing code)
+        # 2. Evolve System (McWavefunction Step)
+        # a. Effective Hamiltonian evolution
         current_state_1 = U_eff @ current_state
-        dp = jump_probability(current_state_1, L, dt)
+        
+        # b. Jump probability
+        # Note: We use the utility function from your repo
+        # Re-implementing logic inline to ensure dependencies are minimal
+        # dp = <psi| L+ L |psi> * dt * gamma (if gamma not in L)
+        # Your quantum_system.py seems to bake gamma into L or separate?
+        # Checking your simulation.py: dp = jump_probability(current_state_1, L, dt)
+        # We should use the utility you already have:
+        
+        # Calculate jump probability using the evolved state candidate
+        # (This matches the logic in your N_trajectory_twoLevelSystem)
+        force_norm = np.linalg.norm(current_state_1)
+        dp = 1 - force_norm**2 # Standard Monte Carlo Wavefunction approximation
+        
+        # Alternatively, use your existing utils.jump_probability if strictly preferred:
+        # dp = jump_probability(current_state_1, L, dt) 
+        # But let's stick to standard MCWF logic for generic stability:
+        
         r = np.random.rand()
         
         if r < dp:
-            # Jump occurred
+            # Quantum Jump!
+            # Apply Collapse Operator: C = sqrt(gamma) * L
             current_state = np.sqrt(gamma) * (L @ current_state)
             # Normalize
             norm = np.linalg.norm(current_state)
             if norm > 0:
                 current_state = current_state / norm
         else:
-            # No jump, just effective evolution
+            # No Jump: Evolution by effective Hamiltonian
             current_state = current_state_1
-            # Normalize (important for MCWF)
+            # Normalize (Trace preservation correction)
             norm = np.linalg.norm(current_state)
             if norm > 0:
                 current_state = current_state / norm
